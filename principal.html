@@ -1,0 +1,395 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Jogo de Reflexo</title>
+    <style>
+        body {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            flex-direction: column;
+            height: auto; /* Permite que o corpo da página expanda conforme o conteúdo */
+            overflow-y: auto; /* Adiciona a barra de rolagem vertical, se necessário */
+            margin: 0;
+            font-family: Arial, sans-serif;
+            background-color: #1a1a1a;
+            color: #fff;
+        }
+
+        #scoreboard {
+            display: none;
+            justify-content: space-between;
+            width: 100%;
+            max-width: 1200px;
+            margin-bottom: 20px;
+        }
+
+        #scoreboard div {
+            background-color: #333;
+            padding: 10px;
+            border-radius: 5px;
+            flex: 1;
+            text-align: center;
+            margin: 0 10px;
+        }
+
+        #gameArea {
+            width: 80vw;
+            height: 60vh;
+            background-color: #444;
+            position: relative;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            border: 2px solid #fff;
+        }
+
+        #buttons {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+
+        .startButton, .homeButton {
+            padding: 10px 20px;
+            background-color: #555;
+            border: 1px solid #888;
+            color: #fff;
+            font-size: 16px;
+            cursor: pointer;
+            border-radius: 3px;
+            transition: background-color 0.2s, border-color 0.2s;
+        }
+
+        .startButton:hover, .homeButton:hover {
+            background-color: #666;
+            border-color: #aaa;
+        }
+
+        .homeButton {
+            display: none;
+            margin-top: 10px;
+        }
+
+        #target {
+            width: 10vmin;
+            height: 10vmin;
+            background-color: red;
+            position: absolute;
+            display: none;
+            border-radius: 10px;
+            transition: transform 0.3s;
+        }
+
+        #target.show {
+            transform: scale(1.2);
+        }
+
+        #resultsContainer {
+            display: none;
+            flex-direction: column;
+            text-align: center;
+            background-color: #333;
+            padding: 10px;
+            border-radius: 10px;
+            margin-top: 20px;
+        }
+
+        #resultsContainer ul {
+            list-style: none;
+            padding: 0;
+        }
+
+        #resultsContainer li {
+            margin: 5px 0;
+        }
+
+        #popup {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(26, 26, 64, 0.9); /* Fundo semi-transparente */
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+        }
+        #popupContent {
+            background-color:#333;
+            border: 2px solid;
+            padding: 20px;
+            text-align: center;
+            width: 300px;
+            font-family: 'Courier New', Courier, monospace;
+        }
+        #popupMessage {
+            margin-bottom: 20px;
+        }
+        #closePopup, #confirmRounds {
+            background-color: #444;
+            color: #F4F4F9;
+            border: none;
+            padding: 10px 20px;
+            cursor: pointer;
+        }
+        #closePopup:hover, #confirmRounds:hover {
+            background-color: #707070;
+        }
+        /* Remove os botões de incremento/decremento */
+        input[type="number"]::-webkit-inner-spin-button, 
+        input[type="number"]::-webkit-outer-spin-button { 
+            -webkit-appearance: none; 
+            margin: 0; 
+        }
+        #roundCounter {
+            font-size: 24px; /* Tamanho da fonte */
+            font-weight: bold; /* Negrito */
+            font-family: 'Courier New', Courier, monospace; /* Fonte personalizada */
+            background-color: #333; /* Cor de fundo */
+            padding: 5px 10px; /* Espaçamento interno */
+            border-radius: 5px; /* Bordas arredondadas */
+            border: 2px solid /* Borda */
+        }
+        #counterContainer {
+            display: flex;
+            align-items: center; /* Centraliza verticalmente */
+            justify-content: center; /* Centraliza horizontalmente */
+        }
+        h1 {
+            gap: 10px;
+            display: flex;
+            align-items: center; /* Centraliza os itens verticalmente no h1 */
+        }
+    </style>
+</head>
+<body>
+    <div id="counterContainer">
+        <h1>
+            Treinamento de reflexo
+            <span id="roundCounter" style="display: none;">(0/x)</span>
+        </h1>
+    </div>    
+
+    <div id="scoreboard">
+        <div id="result">Melhor Tempo: --</div>
+        <div id="averageTime">Média dos Tempos: --</div>
+        <div id="worstTime">Pior Tempo: --</div>
+    </div>
+
+    <div id="buttons">
+        <button class="startButton" id="startButton">Iniciar (infinito)</button>
+        <button class="startButton" id="startButton10">Iniciar (x10)</button>
+        <button class="startButton" id="startButtonCustom">Iniciar (personalizado)</button>
+    </div>
+
+    <div id="gameArea">
+        <div id="target"></div>
+    </div>
+
+    <div id="resultsContainer">
+        <h2>Resultados:</h2>
+        <ul id="resultsList"></ul>
+        <button class="homeButton" id="homeButton">Início</button>
+    </div>
+
+    <div id="popup" style="display: none;">
+        <div id="popupContent">
+            <div id="popupMessage">Digite o número de rodadas:</div>
+            <input type="number" id="roundInput" min="1" placeholder="Digite um número" />
+            <br><br>
+            <button id="confirmRounds">Confirmar</button>
+            <button id="closePopup">Cancelar</button>
+        </div>
+    </div>    
+
+    <script>
+        const startButton = document.getElementById('startButton');
+        const startButton10 = document.getElementById('startButton10');
+        const startButtonCustom = document.getElementById('startButtonCustom');
+        const homeButton = document.getElementById('homeButton');
+        const target = document.getElementById('target');
+        const result = document.getElementById('result');
+        const averageTimeElement = document.getElementById('averageTime');
+        const worstTimeElement = document.getElementById('worstTime');
+        const scoreboard = document.getElementById('scoreboard');
+        const buttons = document.getElementById('buttons');
+        const gameArea = document.getElementById('gameArea');
+        const resultsContainer = document.getElementById('resultsContainer');
+        const resultsList = document.getElementById('resultsList');
+
+        let startTime;
+        let reactionTime;
+        let bestTime = Infinity;
+        let worstTime = 0;
+        let totalTime = 0;
+        let round = 0;
+        let maxRounds = 1;
+        let reactionTimes = [];
+        let infiniteMode = false;
+
+        function startGame(rounds) {
+            maxRounds = rounds || Infinity;
+            round = 0;
+            totalTime = 0;
+            reactionTimes = [];
+            infiniteMode = (rounds === '∞');
+            showScoreboard();
+            startNextRound();
+            roundCounter.style='display: content;'
+        }
+
+        function startNextRound() {
+            if (round < maxRounds) {
+                target.style.display = 'none';
+
+                const randomDelay = Math.floor(Math.random() * 2000) + 1000; // Entre 1 e 3 segundos
+
+                setTimeout(() => {
+                    startTime = Date.now();
+                    const gameAreaWidth = gameArea.clientWidth;
+                    const gameAreaHeight = gameArea.clientHeight;
+                    const targetSize = 10 * Math.min(gameAreaWidth, gameAreaHeight) / 100;
+                    const maxX = gameAreaWidth - targetSize;
+                    const maxY = gameAreaHeight - targetSize;
+                    const randomX = Math.floor(Math.random() * maxX);
+                    const randomY = Math.floor(Math.random() * maxY);
+                    target.style.width = `${targetSize}px`;
+                    target.style.height = `${targetSize}px`;
+                    target.style.left = `${randomX}px`;
+                    target.style.top = `${randomY}px`;
+                    target.style.display = 'block';
+                    target.classList.add('show');
+                }, randomDelay);
+            } else if (!infiniteMode) {
+                displayResults();
+            }
+        }
+
+        function displayResults() {
+            gameArea.style.display = 'none';
+            resultsContainer.style.display = 'flex';
+            resultsList.innerHTML = ''; // Limpa os resultados anteriores
+
+            reactionTimes.forEach((time, index) => {
+                const li = document.createElement('li');
+                li.textContent = `Quadrado ${index + 1}: ${time.toFixed(3)} segundos`;
+                resultsList.appendChild(li);
+            });
+        }
+
+        target.addEventListener('click', () => {
+            reactionTime = (Date.now() - startTime) / 1000;
+            reactionTimes.push(reactionTime);
+            target.style.display = 'none';
+            target.classList.remove('show');
+
+            round++;
+            totalTime += reactionTime;
+            const averageTime = totalTime / round;
+
+            bestTime = Math.min(bestTime, reactionTime);
+            worstTime = Math.max(worstTime, reactionTime);
+
+            result.textContent = `Melhor Tempo: ${bestTime.toFixed(3)} segundos`;
+            worstTimeElement.textContent = `Pior Tempo: ${worstTime.toFixed(3)} segundos`;
+            averageTimeElement.textContent = `Média dos Tempos: ${averageTime.toFixed(3)} segundos`;
+
+            updateRoundCounter(); // Atualiza o contador a cada clique
+
+            startNextRound()
+        });
+
+        startButton.addEventListener('click', () => {
+            hideButtons();
+            startGame(Infinity); // Iniciar no modo infinito
+            roundCounter.textContent = "(0/∞)";
+        });
+        
+        startButton10.addEventListener('click', () => {
+            hideButtons();
+            startGame(10); // Iniciar com 10 rodadas
+            roundCounter.textContent = "(0/10)";
+        });
+
+        startButtonCustom.addEventListener('click', () => {
+            popup.style.display = 'flex'; // Mostra o popup
+            roundInput.focus(); // Foca no campo de input
+        });
+        
+        homeButton.addEventListener('click', () => {
+            resetGame(); // Chama a função para resetar o jogo
+        });
+
+        function hideButtons() {
+            buttons.style.display = 'none';
+            homeButton.style.display = 'block';
+        }
+
+        function showScoreboard() {
+            scoreboard.style.display = 'flex';
+        }
+
+        const popup = document.getElementById('popup');
+        const confirmRoundsButton = document.getElementById('confirmRounds');
+        const roundInput = document.getElementById('roundInput');
+        const closePopupButton = document.getElementById('closePopup');
+
+        confirmRoundsButton.addEventListener('click', () => {
+            const rounds = parseInt(roundInput.value, 10);
+            if (!isNaN(rounds) && rounds > 0) {
+                popup.style.display = 'none'; // Esconde o popup
+                hideButtons();
+                startGame(rounds); // Inicia o jogo com o número de rodadas
+                updateRoundCounter()
+            } else {
+                alert('Por favor, insira um número válido.');
+            }
+        });
+
+        closePopupButton.addEventListener('click', () => {
+            popup.style.display = 'none'; // Fecha o popup
+            roundInput.value = ''; // Zera o valor da caixa de texto
+        });
+
+        function resetGame() {
+            // Reseta as variáveis de controle do jogo
+            round = 0;
+            reactionTimes = [];
+            totalTime = 0;
+            bestTime = Infinity;
+            worstTime = 0;
+            
+            // Oculta a área do jogo e mostra os botões novamente
+            gameArea.style.display = 'flex';
+            resultsContainer.style.display = 'none';
+            buttons.style.display = 'flex';
+            homeButton.style.display = 'none';
+
+            // Reseta o placar
+            result.textContent = 'Melhor Tempo: --';
+            worstTimeElement.textContent = 'Pior Tempo: --';
+            averageTimeElement.textContent = 'Média dos Tempos: --';
+
+            // Esconde o placar
+            scoreboard.style.display = 'none';
+            
+            // Reseta o contador de rodadas
+            roundCounter.style.display = 'none';
+        }
+
+        const roundCounter = document.getElementById('roundCounter');
+
+        function updateRoundCounter() {
+            if (infiniteMode) {
+                roundCounter.textContent = `(${round}/${maxRounds})`;
+            } else {
+                roundCounter.textContent = `(${round}/${maxRounds === Infinity ? "∞" : maxRounds})`;
+            }
+        }
+    </script>
+</body>
+</html>
